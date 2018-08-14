@@ -5,6 +5,7 @@ abstract class Editor {
     private $name = "";
     private $number_of_edits = 0;
     private $articles = array();
+    private $contributions = array();
 
     public function getName($replace_spaces = false) {
         if ($replace_spaces) {
@@ -33,9 +34,21 @@ abstract class Editor {
         $this->articles = $articles;
     }
 
-    public function __construct($name) {
+    function getContributions() {
+        return $this->contributions;
+    }
+
+    function setContributions($contributions) {
+        $this->contributions = $contributions;
+    }
+
+    public function __construct($name, $params = array()) {
+        array_key_exists("increase_number_of_edits", $params) ? null : $params["increase_number_of_edits"] = false;
+
         $this->setName($name);
-        $this->increaseNumberOfEdits();
+        if ($params["increase_number_of_edits"]) {
+            $this->increaseNumberOfEdits();
+        }
     }
 
     public function increaseNumberOfEdits() {
@@ -79,6 +92,43 @@ abstract class Editor {
 
     private function _sortArticles($a, $b) {
         return strcmp($a->getNumberOfEdits(), $b->getNumberOfEdits());
+    }
+
+    public function searchContributions() {
+        $json = file_get_contents('https://en.wikipedia.org/w/api.php?action=query&list=usercontribs&uclimit=500&format=json&ucprop=oresscores|title|sizediff|timestamp|size|flags&ucuser=' . $this->getName(true));
+        $data = json_decode($json, true);
+        $contributions = array();
+        if (array_key_exists("query", $data)) {
+            foreach ($data["query"]["usercontribs"] as $contrib) {
+                $article = new Article($contrib["title"]);
+                $article->setNs($contrib["ns"]);
+                $article->setSize($contrib["size"]);
+
+                $ores = new OresScore();
+                if (array_key_exists("damaging", $contrib["oresscores"])) {
+                    $ores->setDamagingProb($contrib["oresscores"]["damaging"]["true"]);
+                    $ores->setGoodfaithProb($contrib["oresscores"]["goodfaith"]["true"]);
+                    if (array_key_exists("draftquality", $contrib["oresscores"])) {
+                        $ores->setDraftquality($contrib["oresscores"]["draftquality"]);
+                    }
+                    if (array_key_exists("wp10", $contrib["oresscores"])) {
+                        $ores->setWp10($contrib["oresscores"]["wp10"]);
+                    }
+                }
+
+                $contribution = new Contribution();
+                $contribution->setSizediff($contrib["sizediff"]);
+                $contribution->setTimestamp($contrib["timestamp"]);
+                $contribution->setIsMinor(array_key_exists("minor", $contrib));
+                $contribution->setIsTop(array_key_exists("top", $contrib));
+                $contribution->setIsNew(array_key_exists("new", $contrib));
+                $contribution->setArticle($article);
+                $contribution->setOresScore($ores);
+
+                $contributions[] = $contribution;
+            }
+        }
+        $this->setContributions($contributions);
     }
 
 }

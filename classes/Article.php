@@ -6,6 +6,8 @@ class Article {
     private $bots = array();
     private $categories = array();
     private $title = "";
+    private $ns = 0;
+    private $size = 0;
 
     public function getUsers() {
         return $this->users;
@@ -41,6 +43,22 @@ class Article {
 
     function setCategories($categories) {
         $this->categories = $categories;
+    }
+
+    function getNs() {
+        return $this->ns;
+    }
+
+    function setNs($ns) {
+        $this->ns = $ns;
+    }
+
+    function getSize() {
+        return $this->size;
+    }
+
+    function setSize($size) {
+        $this->size = $size;
     }
 
     public function __construct($title, $params = array()) {
